@@ -11,6 +11,8 @@ import '../services/export_service.dart';
 import '../providers/budget_provider.dart';
 import 'budget_screen.dart';
 
+import 'security_settings_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -59,11 +61,13 @@ class HomeScreen extends StatelessWidget {
               // ),
               // Analytics
               IconButton(
-                icon: const Icon(Icons.bar_chart),
+                icon: const Icon(Icons.security),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const SecuritySettingsScreen(),
+                    ),
                   );
                 },
               ),
