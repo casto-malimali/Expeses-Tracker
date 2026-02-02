@@ -5,7 +5,9 @@ import 'package:uuid/uuid.dart';
 import '../providers/transaction_provider.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  final Map? transaction; // null = add, not null = edit
+
+  const AddTransactionScreen({super.key, this.transaction});
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -20,6 +22,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _category = 'General';
   bool _isIncome = false;
 
+  int? _hiveKey;
+
   final _uuid = const Uuid();
 
   final List<String> _categories = [
@@ -31,19 +35,40 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     'Shopping',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.transaction != null) {
+      final t = widget.transaction!;
+
+      _amountCtrl.text = t['amount'].toString();
+      _noteCtrl.text = t['note'];
+      _category = t['category'];
+      _isIncome = t['isIncome'];
+      _hiveKey = t['_key'];
+    }
+  }
+
   void _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final data = {
-      'id': _uuid.v4(),
+      'id': widget.transaction?['id'] ?? _uuid.v4(),
       'amount': double.parse(_amountCtrl.text),
       'category': _category,
       'note': _noteCtrl.text,
-      'date': DateTime.now().toIso8601String(),
+      'date': widget.transaction?['date'] ?? DateTime.now().toIso8601String(),
       'isIncome': _isIncome,
     };
 
-    await context.read<TransactionProvider>().add(data);
+    final provider = context.read<TransactionProvider>();
+
+    if (_hiveKey == null) {
+      await provider.add(data);
+    } else {
+      await provider.update(_hiveKey!, data);
+    }
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -58,8 +83,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.transaction != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Transaction')),
+      appBar: AppBar(
+        title: Text(isEdit ? 'Edit Transaction' : 'Add Transaction'),
+      ),
 
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -69,7 +98,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
           child: ListView(
             children: [
-              // Amount
               TextFormField(
                 controller: _amountCtrl,
                 keyboardType: TextInputType.number,
@@ -80,7 +108,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 12),
 
-              // Category
               DropdownButtonFormField<String>(
                 value: _category,
                 items: _categories
@@ -92,7 +119,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 12),
 
-              // Note
               TextFormField(
                 controller: _noteCtrl,
                 decoration: const InputDecoration(labelText: 'Note'),
@@ -100,7 +126,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 12),
 
-              // Income / Expense
               SwitchListTile(
                 title: const Text('Is Income'),
                 value: _isIncome,
@@ -109,8 +134,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 24),
 
-              // Save Button
-              ElevatedButton(onPressed: _save, child: const Text('Save')),
+              ElevatedButton(
+                onPressed: _save,
+                child: Text(isEdit ? 'Update' : 'Save'),
+              ),
             ],
           ),
         ),
