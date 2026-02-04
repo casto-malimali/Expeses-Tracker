@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:expenses_tracker/providers/budget_provider.dart';
 import 'package:expenses_tracker/providers/transaction_provider.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,9 @@ import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Firebase FIRST
+  await Firebase.initializeApp();
+
   await Hive.initFlutter();
   await Hive.openBox('transactions');
   await Hive.openBox('budgets');

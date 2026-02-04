@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
+import '../services/firebase_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final DBService _db = DBService();
+  final _firebase = FirebaseService();
 
   List<Map> _items = [];
   List<int> _keys = [];
@@ -65,6 +67,23 @@ class TransactionProvider extends ChangeNotifier {
         await _db.delete(k);
       }
     }
+    load();
+  }
+
+  Future<void> backupToCloud() async {
+    await _firebase.backupTransactions(_items.cast<Map<String, dynamic>>());
+  }
+
+  Future<void> restoreFromCloud() async {
+    final data = await _firebase.restoreTransactions();
+
+    // clear local DB by deleting all existing entries
+    await clearAll();
+
+    for (var e in data) {
+      await _db.add(e as Map<String, dynamic>);
+    }
+
     load();
   }
 }

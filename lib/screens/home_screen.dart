@@ -60,16 +60,30 @@ class HomeScreen extends StatelessWidget {
               //   },
               // ),
               // Analytics
-              IconButton(
-                icon: const Icon(Icons.security),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SecuritySettingsScreen(),
-                    ),
-                  );
+              PopupMenuButton<String>(
+                onSelected: (v) async {
+                  final provider = context.read<TransactionProvider>();
+
+                  if (v == 'backup') {
+                    await provider.backupToCloud();
+                  }
+
+                  if (v == 'restore') {
+                    await provider.restoreFromCloud();
+                  }
                 },
+
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'backup',
+                    child: Text('Backup to Cloud'),
+                  ),
+
+                  const PopupMenuItem(
+                    value: 'restore',
+                    child: Text('Restore from Cloud'),
+                  ),
+                ],
               ),
 
               // Export
@@ -385,6 +399,31 @@ Future<bool> _confirmDelete(BuildContext context) async {
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Delete'),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                final provider = context.read<TransactionProvider>();
+
+                if (v == 'backup') {
+                  await provider.backupToCloud();
+                }
+
+                if (v == 'restore') {
+                  await provider.restoreFromCloud();
+                }
+              },
+
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'backup',
+                  child: Text('Backup to Cloud'),
+                ),
+
+                const PopupMenuItem(
+                  value: 'restore',
+                  child: Text('Restore from Cloud'),
+                ),
+              ],
             ),
           ],
         ),
