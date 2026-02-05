@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/firebase_service.dart';
 import '../services/db_service.dart';
 import '../services/firebase_service.dart';
 
@@ -45,16 +46,57 @@ class TransactionProvider extends ChangeNotifier {
 
   Future<void> add(Map<String, dynamic> data) async {
     await _db.add(data);
+
     load();
+
+    // Auto Sync
+    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
   }
+
+  // Future<void> add(Map<String, dynamic> data) async {
+  //   await _db.add(data);
+  //   load();
+  // }
+
+  // Future<void> update(int key, Map<String, dynamic> data) async {
+  //   await _db.update(key, data);
+  //   load();
+  // }
 
   Future<void> update(int key, Map<String, dynamic> data) async {
     await _db.update(key, data);
+
     load();
+
+    // Auto Sync
+    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
   }
+
+  // Future<void> delete(int key) async {
+  //   await _db.delete(key);
+  //   load();
+  // }
 
   Future<void> delete(int key) async {
     await _db.delete(key);
+
+    load();
+
+    // Auto Sync
+    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
+  }
+
+  Future<void> autoRestore() async {
+    final cloudData = await _firebase.fetchTransactions();
+
+    if (cloudData.isEmpty) return;
+
+    await _db.clear();
+
+    for (var e in cloudData) {
+      await _db.add(e as Map<String, dynamic>);
+    }
+
     load();
   }
 
@@ -75,7 +117,7 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   Future<void> restoreFromCloud() async {
-    final data = await _firebase.restoreTransactions();
+    final data = await _firebase.fetchTransactions();
 
     // clear local DB by deleting all existing entries
     await clearAll();

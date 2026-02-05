@@ -27,5 +27,13 @@ class DBService {
     }
   }
 
+  // Add this method to your DBService class
+  Future<void> clear() async {
+    // Implement the logic to clear all records from your database
+    // For example, if using sqflite:
+    // final db = await database;
+    // await db.delete('your_table_name');
+  }
+
   List<int> get keys => _box.keys.cast<int>().toList();
 }

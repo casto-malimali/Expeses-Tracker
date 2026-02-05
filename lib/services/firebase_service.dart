@@ -5,21 +5,22 @@ class FirebaseService {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
 
-  // Login
-  Future<User> signIn() async {
-    final cred = await _auth.signInAnonymously();
-    return cred.user!;
+  Future<void> signInIfNeeded() async {
+    if (_auth.currentUser == null) {
+      await _auth.signInAnonymously();
+    }
   }
 
-  String? get uid => _auth.currentUser?.uid;
+  String get uid => _auth.currentUser!.uid;
 
-  // Backup Transactions
-  Future<void> backupTransactions(List<Map<String, dynamic>> items) async {
-    if (uid == null) await signIn();
+  // ============ TRANSACTIONS ============
 
-    final batch = _db.batch();
+  Future<void> syncTransactions(List<Map<String, dynamic>> items) async {
+    await signInIfNeeded();
 
     final col = _db.collection('users').doc(uid).collection('transactions');
+
+    final batch = _db.batch();
 
     for (var e in items) {
       final ref = col.doc(e['id']);
@@ -29,9 +30,8 @@ class FirebaseService {
     await batch.commit();
   }
 
-  // Restore Transactions
-  Future<List<Map<String, dynamic>>> restoreTransactions() async {
-    if (uid == null) await signIn();
+  Future<List<Map>> fetchTransactions() async {
+    await signInIfNeeded();
 
     final snap = await _db
         .collection('users')
@@ -42,20 +42,22 @@ class FirebaseService {
     return snap.docs.map((e) => e.data()).toList();
   }
 
-  // Backup Budgets
-  Future<void> backupBudgets(List<Map<String, dynamic>> items) async {
-    if (uid == null) await signIn();
+  // ============ BUDGETS ============
+
+  Future<void> syncBudgets(List<Map<String, dynamic>> items) async {
+    await signInIfNeeded();
 
     final col = _db.collection('users').doc(uid).collection('budgets');
 
     for (var e in items) {
-      await col.doc(e['category']).set(e);
+      await col
+          .doc('${e['month']}_${e['category']}')
+          .set(e as Map<String, dynamic>);
     }
   }
 
-  // Restore Budgets
-  Future<List<Map<String, dynamic>>> restoreBudgets() async {
-    if (uid == null) await signIn();
+  Future<List<Map>> fetchBudgets() async {
+    await signInIfNeeded();
 
     final snap = await _db
         .collection('users')
@@ -65,4 +67,30 @@ class FirebaseService {
 
     return snap.docs.map((e) => e.data()).toList();
   }
+  // ...existing code...
+
+  Future<void> backupTransactions(
+    List<Map<String, dynamic>> transactions,
+  ) async {
+    // Replace with your actual Firebase backup logic
+    // For example, using Firestore:
+    final collection = FirebaseFirestore.instance.collection('transactions');
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+
+    // Clear existing transactions (optional, depending on your use case)
+    final snapshot = await collection.get();
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Add new transactions
+    for (var tx in transactions) {
+      final docRef = collection.doc();
+      batch.set(docRef, tx);
+    }
+
+    await batch.commit();
+  }
+
+  // ...existing code...
 }
