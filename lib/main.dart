@@ -4,11 +4,10 @@ import 'package:expenses_tracker/providers/transaction_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
+
 import 'services/security_service.dart';
 import 'screens/lock_screen.dart';
 import 'screens/setup_pin_screen.dart';
-import 'screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -21,10 +21,6 @@ class DBService {
 
   Future<void> delete(int key) async {
     await _box.delete(key);
-
-    void clear() {
-      _box.clear();
-    }
   }
 
   // Add this method to your DBService class

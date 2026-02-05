@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/firebase_service.dart';
 import '../services/db_service.dart';
-import '../services/firebase_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final DBService _db = DBService();

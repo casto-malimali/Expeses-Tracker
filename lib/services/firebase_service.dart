@@ -50,9 +50,7 @@ class FirebaseService {
     final col = _db.collection('users').doc(uid).collection('budgets');
 
     for (var e in items) {
-      await col
-          .doc('${e['month']}_${e['category']}')
-          .set(e as Map<String, dynamic>);
+      await col.doc('${e['month']}_${e['category']}').set(e);
     }
   }
 
