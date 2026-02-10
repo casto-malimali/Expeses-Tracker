@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:expenses_tracker/services/connectivity_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FirebaseService {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
+  final _connectivity = ConnectivityService();
 
   Future<void> signInIfNeeded() async {
     if (_auth.currentUser == null) {
@@ -15,19 +17,62 @@ class FirebaseService {
 
   // ============ TRANSACTIONS ============
 
-  Future<void> syncTransactions(List<Map<String, dynamic>> items) async {
-    await signInIfNeeded();
+  // Future<void> syncTransactions(List<Map<String, dynamic>> items) async {
+  //   final online = await _connectivity.isOnline();
+  //   if (!online) return;
 
-    final col = _db.collection('users').doc(uid).collection('transactions');
+  //   await signInIfNeeded();
 
-    final batch = _db.batch();
+  //   final col = _db.collection('users').doc(uid).collection('transactions');
 
-    for (var e in items) {
-      final ref = col.doc(e['id']);
-      batch.set(ref, e);
+  //   final userId = await getUid();
+
+  //   final batch = _db.batch();
+
+  //   for (var e in items) {
+  //     final ref = col.doc(e['id']);
+  //     batch.set(ref, e);
+  //   }
+
+  //   await batch.commit();
+  // }
+  Future<void> syncTransactions(
+    List<Map> items,
+    void Function() onSyncing,
+    void Function() onSuccess,
+    void Function() onOffline,
+    void Function() onError,
+  ) async {
+    final online = await _connectivity.isOnline();
+
+    if (!online) {
+      onOffline();
+      return;
     }
 
-    await batch.commit();
+    try {
+      onSyncing();
+
+      await signInIfNeeded();
+      final userId = uid;
+
+      final col = _db
+          .collection('users')
+          .doc(userId)
+          .collection('transactions');
+
+      final batch = _db.batch();
+
+      for (var e in items) {
+        batch.set(col.doc(e['id']), e);
+      }
+
+      await batch.commit();
+
+      onSuccess();
+    } catch (_) {
+      onError();
+    }
   }
 
   Future<List<Map>> fetchTransactions() async {

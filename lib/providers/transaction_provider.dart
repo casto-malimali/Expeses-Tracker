@@ -1,10 +1,14 @@
+import 'package:expenses_tracker/providers/sync_provider.dart';
+import 'package:expenses_tracker/services/connectivity_service.dart';
 import 'package:flutter/material.dart';
 import '../services/firebase_service.dart';
 import '../services/db_service.dart';
+import '../providers/network_provider.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final DBService _db = DBService();
   final _firebase = FirebaseService();
+  final _connectivity = ConnectivityService();
 
   List<Map> _items = [];
   List<int> _keys = [];
@@ -43,13 +47,20 @@ class TransactionProvider extends ChangeNotifier {
     return result;
   }
 
-  Future<void> add(Map<String, dynamic> data) async {
+  Future<void> add(Map<String, dynamic> data, SyncProvider sync) async {
     await _db.add(data);
 
     load();
 
     // Auto Sync
-    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
+    // await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
+    await _firebase.syncTransactions(
+      _items,
+      sync.setSyncing,
+      sync.setIdle,
+      sync.setOffline,
+      sync.setError,
+    );
   }
 
   // Future<void> add(Map<String, dynamic> data) async {
@@ -62,13 +73,23 @@ class TransactionProvider extends ChangeNotifier {
   //   load();
   // }
 
-  Future<void> update(int key, Map<String, dynamic> data) async {
+  Future<void> update(
+    int key,
+    Map<String, dynamic> data,
+    SyncProvider sync,
+  ) async {
     await _db.update(key, data);
 
     load();
 
     // Auto Sync
-    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
+    await _firebase.syncTransactions(
+      _items,
+      sync.setSyncing,
+      sync.setIdle,
+      sync.setOffline,
+      sync.setError,
+    );
   }
 
   // Future<void> delete(int key) async {
@@ -76,13 +97,19 @@ class TransactionProvider extends ChangeNotifier {
   //   load();
   // }
 
-  Future<void> delete(int key) async {
+  Future<void> delete(int key, SyncProvider sync) async {
     await _db.delete(key);
 
     load();
 
     // Auto Sync
-    await _firebase.syncTransactions(_items.cast<Map<String, dynamic>>());
+    await _firebase.syncTransactions(
+      _items,
+      sync.setSyncing,
+      sync.setIdle,
+      sync.setOffline,
+      sync.setError,
+    );
   }
 
   Future<void> autoRestore() async {

@@ -9,6 +9,11 @@ import '../services/export_service.dart';
 
 import '../providers/budget_provider.dart';
 
+import '../providers/network_provider.dart';
+
+import '../providers/sync_provider.dart';
+import '../utils/sync_status.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -113,6 +118,30 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
+              Consumer<SyncProvider>(
+                builder: (context, sync, _) {
+                  switch (sync.status) {
+                    case SyncStatus.syncing:
+                      return const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+
+                    case SyncStatus.offline:
+                      return const Icon(Icons.cloud_off, color: Colors.orange);
+
+                    case SyncStatus.error:
+                      return const Icon(Icons.error, color: Colors.red);
+
+                    default:
+                      return const Icon(Icons.cloud_done, color: Colors.green);
+                  }
+                },
+              ),
             ],
           ),
 
@@ -131,6 +160,22 @@ class HomeScreen extends StatelessWidget {
 
             child: Column(
               children: [
+                Consumer<NetworkProvider>(
+                  builder: (context, net, _) {
+                    if (net.isOnline) return const SizedBox();
+
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      color: Colors.orange,
+                      child: const Text(
+                        'You are offline. Data will sync when internet is available.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    );
+                  },
+                ),
                 // Month Selector
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,9 +225,24 @@ class HomeScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _summaryCard('Income', income, Colors.green),
-                    _summaryCard('Expense', expense, Colors.red),
-                    _summaryCard('Balance', balance, Colors.blue),
+                    _summaryCard(
+                      'Income',
+                      income,
+                      Colors.green,
+                      Icons.arrow_downward,
+                    ),
+                    _summaryCard(
+                      'Expense',
+                      expense,
+                      Colors.red,
+                      Icons.arrow_upward,
+                    ),
+                    _summaryCard(
+                      'Balance',
+                      balance,
+                      Colors.blue,
+                      Icons.account_balance_wallet,
+                    ),
                   ],
                 ),
 
@@ -268,6 +328,7 @@ class HomeScreen extends StatelessWidget {
                               onDismissed: (_) {
                                 context.read<TransactionProvider>().delete(
                                   item['_key'],
+                                  item['amount'],
                                 );
                               },
 
@@ -339,18 +400,33 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryCard(String title, double amount, Color color) {
+  Widget _summaryCard(String title, double amount, Color color, IconData icon) {
     return Expanded(
       child: Card(
         elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              Text(title, style: const TextStyle(fontSize: 14)),
-              const SizedBox(height: 6),
+              // Icon container with a subtle background
+              CircleAvatar(
+                backgroundColor: color.withOpacity(0.1),
+                radius: 18,
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(height: 8),
               Text(
-                amount.toStringAsFixed(2),
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "\$${amount.toStringAsFixed(2)}",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -363,66 +439,66 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-Future<void> _pickMonth(BuildContext context, DateTime current) async {
-  final picked = await showDatePicker(
-    context: context,
-    initialDate: current,
-    firstDate: DateTime(2020),
-    lastDate: DateTime(2100),
-    initialDatePickerMode: DatePickerMode.year,
-  );
+  Future<void> _pickMonth(BuildContext context, DateTime current) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDatePickerMode: DatePickerMode.year,
+    );
 
-  if (picked != null) {
-    final selected = DateTime(picked.year, picked.month);
+    if (picked != null) {
+      final selected = DateTime(picked.year, picked.month);
 
-    context.read<TransactionProvider>().changeMonth(selected);
+      context.read<TransactionProvider>().changeMonth(selected);
+    }
   }
-}
 
-Future<bool> _confirmDelete(BuildContext context) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Delete Transaction'),
-          content: const Text('Are you sure you want to delete this record?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (v) async {
-                final provider = context.read<TransactionProvider>();
+  Future<bool> _confirmDelete(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Delete Transaction'),
+            content: const Text('Are you sure you want to delete this record?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (v) async {
+                  final provider = context.read<TransactionProvider>();
 
-                if (v == 'backup') {
-                  await provider.backupToCloud();
-                }
+                  if (v == 'backup') {
+                    await provider.backupToCloud();
+                  }
 
-                if (v == 'restore') {
-                  await provider.restoreFromCloud();
-                }
-              },
+                  if (v == 'restore') {
+                    await provider.restoreFromCloud();
+                  }
+                },
 
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'backup',
-                  child: Text('Backup to Cloud'),
-                ),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'backup',
+                    child: Text('Backup to Cloud'),
+                  ),
 
-                const PopupMenuItem(
-                  value: 'restore',
-                  child: Text('Restore from Cloud'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ) ??
-      false;
+                  const PopupMenuItem(
+                    value: 'restore',
+                    child: Text('Restore from Cloud'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
 }

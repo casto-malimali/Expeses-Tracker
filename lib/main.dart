@@ -1,3 +1,5 @@
+import 'package:expenses_tracker/providers/network_provider.dart';
+import 'package:expenses_tracker/providers/sync_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:expenses_tracker/providers/budget_provider.dart';
 import 'package:expenses_tracker/providers/transaction_provider.dart';
@@ -26,6 +28,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final network = context.read<NetworkProvider>();
+    final tx = context.read<TransactionProvider>();
+    final sync = context.read<SyncProvider>();
+
+    network.onReconnect = () async {
+      if (sync.hasPendingChanges) {
+        await tx.autoRestore();
+      }
+    };
     return MultiProvider(
       providers: [
         // ChangeNotifierProvider(create: (_) => TransactionProvider()..load()),
@@ -35,6 +46,8 @@ class MyApp extends StatelessWidget {
             ..autoRestore(),
         ),
         ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => NetworkProvider()),
+        ChangeNotifierProvider(create: (_) => SyncProvider()),
       ],
       child: MaterialApp(
         title: 'Income & Expense Tracker',
